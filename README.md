@@ -106,8 +106,20 @@ The repo includes a [`render.yaml`](render.yaml) [Blueprint](https://docs.render
 
 | Service        | Type        | What it runs |
 |----------------|------------|--------------|
-| `autostream-api` | Web (Python) | FastAPI: `uvicorn backend.main_api:app` on `$PORT` |
+| `autostream-api` | Web (Python) | `python backend/render_entry.py` (listens on `$PORT`) |
 | `autostream-web` | Static        | Vite build output in `frontend/dist` |
+
+**Important — Root Directory (API web service):** In the service settings, **Root Directory** must be the **repository root** (empty / `.` / leave blank), **not** `backend/`. If it is set to `backend/`, you get `ModuleNotFoundError: No module named 'backend'`. The start command `python backend/render_entry.py` must run from the folder that *contains* the `backend` package. If you already set root to `backend/`, use start command: `python render_entry.py` instead and keep `rootDir` in sync, or clear Root Directory to the repo root.
+
+**Which env var goes where**
+
+| Variable | Set on | Value |
+|----------|--------|--------|
+| `GEMINI_API_KEY` | **API (web) only** | Your Gemini key |
+| `CORS_ORIGINS` | **API (web) only** | **Static site** URL, e.g. `https://auto-stream-itfv.onrender.com` (the page users open — *not* the API URL) |
+| `VITE_API_BASE` | **Static site only** | **API** URL, e.g. `https://auto-stream-backend.onrender.com` (no trailing slash) |
+
+Do **not** put `CORS_ORIGINS` on the static service or `VITE_API_BASE` on the API — they are read in the wrong place and will not work.
 
 ### One-time setup (in the Render Dashboard)
 
@@ -115,8 +127,8 @@ The repo includes a [`render.yaml`](render.yaml) [Blueprint](https://docs.render
 
 2. **API service (`autostream-api`) — environment**
    - **`GEMINI_API_KEY`**: your Google AI / Gemini key (mark as *Secret*).  
-   - **`CORS_ORIGINS`**: after the static site exists, set to its public origin, e.g. `https://autostream-web.onrender.com` (no path). You can list several, comma‑separated. This allows the browser to call the API from that origin.  
-   - Leave **`PYTHON_VERSION`** as in the Blueprint unless Render suggests otherwise.
+   - **`CORS_ORIGINS`**: the **static site’s** public origin (where the UI is hosted), e.g. `https://your-frontend.onrender.com` (no path). You can list several, comma‑separated. **Do not** set this to your API’s URL.  
+   - **`PYTHON_VERSION`**: e.g. `3.12.0` (see `runtime.txt` / `render.yaml`) — avoid leaving Render on a very new default (e.g. 3.14) if dependencies lag.
 
 3. **Deploy the API first** and copy its public URL, e.g. `https://autostream-api.onrender.com`.
 
@@ -132,8 +144,8 @@ The repo includes a [`render.yaml`](render.yaml) [Blueprint](https://docs.render
 
 ### Manual alternative (no Blueprint)
 
-- **Web service:** Root directory = repo root. Build: `pip install -r backend/requirements.txt`. Start: `python -m uvicorn backend.main_api:app --host 0.0.0.0 --port $PORT`. Health check path: `/health`.  
-- **Static site:** Build: `cd frontend && npm install && npm run build`. Publish directory: `frontend/dist`. Set `VITE_API_BASE` the same as above.
+- **Web service:** Root directory = **repo root**. Build: `pip install -r backend/requirements.txt`. Start: `python backend/render_entry.py` (or `uvicorn` only if the process cwd is the repo root). Health check path: `/health`.  
+- **Static site:** Build: `cd frontend && npm install && npm run build`. Publish directory: `frontend/dist`. Set `VITE_API_BASE` to the **API** URL.
 
 ---
 
