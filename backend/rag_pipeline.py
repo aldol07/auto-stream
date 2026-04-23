@@ -1,16 +1,6 @@
-"""
-RAG Pipeline for AutoStream Agent
-Loads knowledge base, creates embeddings, and retrieves relevant context.
-Uses FAISS for vector storage and sentence-transformers for embeddings.
-"""
-
 import os
 import re
 from pathlib import Path
-
-# ─────────────────────────────────────────────
-# KNOWLEDGE BASE LOADER
-# ─────────────────────────────────────────────
 
 def load_knowledge_base(filepath: str = None) -> str:
     """Load the markdown knowledge base file."""
@@ -67,10 +57,6 @@ def chunk_text(text: str, chunk_size: int = 400, overlap: int = 80) -> list[str]
     return [c for c in chunks if len(c.strip()) > 20]
 
 
-# ─────────────────────────────────────────────
-# VECTOR STORE (FAISS)
-# ─────────────────────────────────────────────
-
 _vector_store = None
 _chunks = None
 
@@ -87,7 +73,7 @@ def _build_vector_store():
         from langchain_community.embeddings import HuggingFaceEmbeddings
         from langchain_core.documents import Document
 
-        print("📚 Loading knowledge base...")
+        print("[RAG] Loading knowledge base...")
         kb_text = load_knowledge_base()
         raw_chunks = chunk_text(kb_text)
         
@@ -95,7 +81,7 @@ def _build_vector_store():
         docs = [Document(page_content=chunk, metadata={"index": i}) 
                 for i, chunk in enumerate(raw_chunks)]
         
-        print("🔢 Building embeddings (first run may take ~30 seconds)...")
+        print("[RAG] Building embeddings (first run may take ~30 seconds)...")
         embeddings = HuggingFaceEmbeddings(
             model_name="all-MiniLM-L6-v2",
             model_kwargs={"device": "cpu"},
@@ -103,11 +89,11 @@ def _build_vector_store():
         )
         
         _vector_store = FAISS.from_documents(docs, embeddings)
-        print("✅ Knowledge base ready!")
+        print("[RAG] Knowledge base ready.")
         return _vector_store, _chunks
     
     except ImportError:
-        print("⚠️  FAISS/HuggingFace not available, using keyword search fallback.")
+        print("[RAG] FAISS/HuggingFace not available, using keyword search fallback.")
         kb_text = load_knowledge_base()
         _chunks = chunk_text(kb_text)
         return None, _chunks
@@ -126,10 +112,6 @@ def _keyword_search(query: str, chunks: list[str], top_k: int = 3) -> list[str]:
     scored.sort(key=lambda x: x[0], reverse=True)
     return [chunk for _, chunk in scored[:top_k] if _ > 0]
 
-
-# ─────────────────────────────────────────────
-# PUBLIC INTERFACE
-# ─────────────────────────────────────────────
 
 def retrieve_context(query: str, top_k: int = 3) -> str:
     """
@@ -157,10 +139,6 @@ def retrieve_context(query: str, top_k: int = 3) -> str:
     
     return "\n\n---\n\n".join(retrieved)
 
-
-# ─────────────────────────────────────────────
-# TEST
-# ─────────────────────────────────────────────
 
 if __name__ == "__main__":
     test_queries = [

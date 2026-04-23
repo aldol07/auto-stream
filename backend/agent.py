@@ -1,8 +1,3 @@
-"""
-AutoStream Conversational AI Agent
-Built with LangGraph for ServiceHive Inflx Assignment
-"""
-
 import os
 from typing import TypedDict, Annotated, Literal
 from langgraph.graph import StateGraph, END
@@ -16,10 +11,6 @@ from .tools import mock_lead_capture
 from .intent_classifier import classify_intent
 
 
-# ─────────────────────────────────────────────
-# STATE DEFINITION
-# ─────────────────────────────────────────────
-
 class AgentState(TypedDict):
     messages: Annotated[list, add_messages]   # Full conversation history
     intent: str                                # Current classified intent
@@ -29,10 +20,6 @@ class AgentState(TypedDict):
     lead_captured: bool                        # Whether lead was submitted
     awaiting_lead_field: str | None            # Which field we're asking for next
 
-
-# ─────────────────────────────────────────────
-# LLM SETUP
-# ─────────────────────────────────────────────
 
 def get_llm():
     raw = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
@@ -48,10 +35,6 @@ def get_llm():
     )
 
 
-# ─────────────────────────────────────────────
-# NODE: INTENT ROUTER
-# ─────────────────────────────────────────────
-
 def intent_router_node(state: AgentState) -> AgentState:
     """Classifies the latest user message intent."""
     last_message = state["messages"][-1]
@@ -60,10 +43,6 @@ def intent_router_node(state: AgentState) -> AgentState:
     intent = classify_intent(user_text, get_llm())
     return {**state, "intent": intent}
 
-
-# ─────────────────────────────────────────────
-# NODE: GREETING
-# ─────────────────────────────────────────────
 
 def greeting_node(state: AgentState) -> AgentState:
     """Handles casual greetings."""
@@ -80,10 +59,6 @@ Keep it concise (2-3 sentences)."""
     
     return {**state, "messages": state["messages"] + [AIMessage(content=response.content)]}
 
-
-# ─────────────────────────────────────────────
-# NODE: RAG RETRIEVAL + RESPONSE
-# ─────────────────────────────────────────────
 
 def rag_node(state: AgentState) -> AgentState:
     """Retrieves relevant knowledge and generates a response."""
@@ -115,10 +90,6 @@ Instructions:
     return {**state, "messages": state["messages"] + [AIMessage(content=response.content)]}
 
 
-# ─────────────────────────────────────────────
-# NODE: LEAD COLLECTION
-# ─────────────────────────────────────────────
-
 def lead_collection_node(state: AgentState) -> AgentState:
     """Collects lead information step by step. Calls tool only when all fields collected."""
     
@@ -144,25 +115,25 @@ def lead_collection_node(state: AgentState) -> AgentState:
 
     # ── Decide what to ask for next ──
     if not name:
-        response_text = "Great, I'd love to get you started with AutoStream! 🎬\n\nCould you please share your **full name**?"
+        response_text = "Great, I'd love to get you started with AutoStream!\n\nCould you please share your **full name**?"
         awaiting = "name"
 
     elif not email:
-        response_text = f"Nice to meet you, {name}! 👋\n\nWhat's your **email address** so we can set up your account?"
+        response_text = f"Nice to meet you, {name}!\n\nWhat's your **email address** so we can set up your account?"
         awaiting = "email"
 
     elif not platform:
-        response_text = f"Perfect! Last question — which **creator platform** do you primarily use? (e.g., YouTube, Instagram, TikTok, etc.)"
+        response_text = f"Perfect! Last question - which **creator platform** do you primarily use? (e.g., YouTube, Instagram, TikTok, etc.)"
         awaiting = "platform"
 
     else:
         # ── ALL INFO COLLECTED → fire the tool ──
         mock_lead_capture(name, email, platform)
         response_text = (
-            f"🎉 You're all set, **{name}**!\n\n"
+            f"You're all set, **{name}**!\n\n"
             f"We've captured your details and our team will reach out to **{email}** shortly "
             f"to set up your AutoStream Pro account for **{platform}**.\n\n"
-            f"Welcome aboard! 🚀"
+            f"Welcome aboard!"
         )
         return {
             **state,
@@ -185,10 +156,6 @@ def lead_collection_node(state: AgentState) -> AgentState:
     }
 
 
-# ─────────────────────────────────────────────
-# ROUTING LOGIC
-# ─────────────────────────────────────────────
-
 def route_after_intent(state: AgentState) -> Literal["greeting", "rag", "lead_collection"]:
     """Routes to the correct node based on classified intent."""
     
@@ -207,10 +174,6 @@ def route_after_intent(state: AgentState) -> Literal["greeting", "rag", "lead_co
     else:
         return "greeting"
 
-
-# ─────────────────────────────────────────────
-# BUILD THE GRAPH
-# ─────────────────────────────────────────────
 
 def build_graph():
     graph = StateGraph(AgentState)
@@ -242,10 +205,6 @@ def build_graph():
 
     return graph.compile()
 
-
-# ─────────────────────────────────────────────
-# INITIAL STATE
-# ─────────────────────────────────────────────
 
 def get_initial_state() -> AgentState:
     return {

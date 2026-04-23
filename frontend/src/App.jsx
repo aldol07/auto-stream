@@ -62,14 +62,14 @@ function getOrCreateSessionId() {
 }
 
 const INTENT_META = {
-  greeting: { label: "Casual", emoji: "💬" },
-  product_inquiry: { label: "Inquiring", emoji: "🔍" },
-  high_intent: { label: "High Intent", emoji: "🔥" },
+  greeting: { label: "Casual", prefix: "Intent" },
+  product_inquiry: { label: "Inquiring", prefix: "Intent" },
+  high_intent: { label: "High Intent", prefix: "Intent" },
 };
 
 function intentBadge(intent) {
-  const m = INTENT_META[intent] || { label: intent || "—", emoji: "💬" };
-  return `${m.emoji} ${m.label}`;
+  const m = INTENT_META[intent] || { label: intent || "-", prefix: "Intent" };
+  return `${m.prefix}: ${m.label}`;
 }
 
 export default function App() {
@@ -177,7 +177,7 @@ export default function App() {
     <div className="app">
       <header className="header">
         <div className="brand">
-          <span className="logo">🎬</span>
+          <span className="logo">AS</span>
           <div>
             <h1>AutoStream Agent</h1>
             <p className="subtitle">LangGraph · Gemini · RAG</p>

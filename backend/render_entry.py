@@ -1,30 +1,19 @@
-"""
-Render start command: fixes sys.path so `backend` imports work on Render.
-
-Use in Render **Start Command** (pick one):
-
-- Root directory = **repo root** (recommended, leave blank / `.`):
-    python backend/render_entry.py
-
-- Root directory = **backend** (subfolder):
-    python render_entry.py
-
-Do not use `uvicorn backend.main_api:app` alone if Render’s working directory
-omits the repo root — it causes: ModuleNotFoundError: No module named 'backend'.
-"""
 from __future__ import annotations
 
 import os
 import sys
 from pathlib import Path
 
-# This file is backend/render_entry.py → repo root is parent
 BACKEND_DIR = Path(__file__).resolve().parent
 ROOT = BACKEND_DIR.parent
 
 os.chdir(ROOT)
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+
+from backend.stdio_fix import apply_stdio_utf8
+
+apply_stdio_utf8()
 
 
 def main() -> None:

@@ -1,16 +1,7 @@
-"""
-Tool Definitions for AutoStream Agent
-Contains mock API functions for lead capture.
-"""
-
 import json
 import datetime
 from pathlib import Path
 
-
-# ─────────────────────────────────────────────
-# MOCK LEAD CAPTURE TOOL
-# ─────────────────────────────────────────────
 
 def mock_lead_capture(name: str, email: str, platform: str) -> dict:
     """
@@ -28,7 +19,7 @@ def mock_lead_capture(name: str, email: str, platform: str) -> dict:
         dict with status and lead_id
     """
     print("\n" + "="*50)
-    print("🎯 LEAD CAPTURED SUCCESSFULLY")
+    print("LEAD CAPTURED SUCCESSFULLY")
     print("="*50)
     print(f"  Name     : {name}")
     print(f"  Email    : {email}")
@@ -76,12 +67,8 @@ def _save_lead_to_log(lead_data: dict):
     with open(log_path, "w") as f:
         json.dump(existing, f, indent=2)
     
-    print(f"📁 Lead saved to: {log_path}")
+    print(f"Lead saved to: {log_path}")
 
-
-# ─────────────────────────────────────────────
-# TEST
-# ─────────────────────────────────────────────
 
 if __name__ == "__main__":
     result = mock_lead_capture(

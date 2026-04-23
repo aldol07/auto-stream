@@ -1,8 +1,3 @@
-"""
-Intent Classifier for AutoStream Agent
-Classifies user messages into: greeting | product_inquiry | high_intent
-"""
-
 from langchain_core.messages import HumanMessage, SystemMessage
 
 

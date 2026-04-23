@@ -1,11 +1,8 @@
-"""
-FastAPI wrapper around the AutoStream LangGraph agent.
-
-From project root:
-  uvicorn backend.main_api:app --reload --host 127.0.0.1 --port 8000
-"""
-
 from __future__ import annotations
+
+from .stdio_fix import apply_stdio_utf8
+
+apply_stdio_utf8()
 
 import json
 import os
@@ -22,7 +19,6 @@ from .agent import build_graph, get_initial_state
 
 BACKEND = Path(__file__).resolve().parent
 ROOT = BACKEND.parent
-# Do not override env vars already set by the host (e.g. Render, Docker)
 load_dotenv(ROOT / ".env", override=False)
 
 LEADS_LOG_PATH = BACKEND / "leads_log.json"
@@ -78,8 +74,6 @@ def _last_ai_content(messages: list) -> str:
     return ""
 
 
-# ─── Schemas ─────────────────────────────────────────
-
 class ChatRequest(BaseModel):
     session_id: str | None = None
     message: str = Field(..., min_length=1)
@@ -113,8 +107,6 @@ def _gemini_key_present() -> bool:
     g = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or ""
     return bool(g.strip())
 
-
-# ─── Routes ─────────────────────────────────────────
 
 @app.get("/health", response_model=HealthResponse)
 def health():
