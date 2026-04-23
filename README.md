@@ -1,5 +1,7 @@
 # AutoStream Agent
 
+Live app: [https://auto-stream-itfv.onrender.com](https://auto-stream-itfv.onrender.com)
+
 ## 1) How to run locally
 
 ### Prerequisites
@@ -33,6 +35,8 @@ Create `.env` in project root:
 GEMINI_API_KEY=your_key_here
 ```
 
+Note: If models such as GPT-4o-mini, Gemini 1.5 Flash, or Claude 3 Haiku are not freely available in your account, paste your own valid API key and then test.
+
 ### Run backend + frontend (two terminals)
 
 Terminal A (API):
@@ -53,6 +57,18 @@ Open the URL printed by Vite (usually `http://127.0.0.1:5173`).
 ```bash
 python -m backend
 ```
+
+## 1.1) Brief deployment instructions (Render)
+
+1. Push this repo to GitHub.
+2. In Render, create two services from the same repo:
+   - Web Service (API): start command `python backend/render_entry.py`
+   - Static Site (frontend): build `cd frontend && npm install && npm run build`, publish `frontend/dist`
+3. Set environment variables:
+   - API service: `GEMINI_API_KEY`, `CORS_ORIGINS=https://auto-stream-itfv.onrender.com`
+   - Static service: `VITE_API_BASE=<your_api_service_url>`
+4. Deploy API first, then deploy the static site.
+5. Open the live app URL.
 
 ## 2) Architecture explanation (~200 words)
 
