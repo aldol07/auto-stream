@@ -35,7 +35,7 @@ Create `.env` in project root:
 GEMINI_API_KEY=your_key_here
 ```
 
-Note: If models such as GPT-4o-mini, Gemini 1.5 Flash, or Claude 3 Haiku are not freely available in your account, paste your own valid API key and then test.
+Note: The models which were asked for use are not freely available GPT-4o-mini, Gemini 1.5 Flash(no longer available), or Claude 3 Haiku are not freely available, paste your own valid API key and then test.
 
 ### Run backend + frontend (two terminals)
 
