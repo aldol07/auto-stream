@@ -5,15 +5,51 @@ const defaultDirect = "http://127.0.0.1:8000";
 /** In dev, Vite proxies /api/* → FastAPI (no CORS). Set VITE_API_BASE to call the API directly. */
 const useViteProxy = import.meta.env.DEV && !import.meta.env.VITE_API_BASE;
 
+/** Normalized public API base (https://). In production, VITE_API_BASE must be the FastAPI host, not the static site. */
+function normalizeApiBase() {
+  const raw = import.meta.env.VITE_API_BASE;
+  if (raw == null || String(raw).trim() === "") return null;
+  const t = String(raw).trim().replace(/\/$/, "");
+  if (t.startsWith("http://") || t.startsWith("https://")) return t;
+  return `https://${t}`;
+}
+
 function apiUrl(path) {
   const p = path.startsWith("/") ? path : `/${path}`;
   if (useViteProxy) return `/api${p}`;
-  return `${(import.meta.env.VITE_API_BASE || defaultDirect).replace(/\/$/, "")}${p}`;
+  const base = normalizeApiBase() || defaultDirect;
+  return `${base}${p}`;
 }
 
 function apiLabel() {
   if (useViteProxy) return "Vite /api/ → 127.0.0.1:8000";
-  return import.meta.env.VITE_API_BASE || defaultDirect;
+  const nb = normalizeApiBase();
+  if (nb) return nb;
+  return defaultDirect;
+}
+
+function useDeploymentConfigWarning() {
+  const [text, setText] = useState(null);
+  useEffect(() => {
+    if (import.meta.env.DEV) return;
+    const nb = normalizeApiBase();
+    if (!nb) {
+      setText(
+        "Production build: VITE_API_BASE is missing. On Render, set it on the static service to your API URL (e.g. https://your-api.onrender.com), then rebuild."
+      );
+      return;
+    }
+    try {
+      if (new URL(nb).origin === window.location.origin) {
+        setText(
+          "VITE_API_BASE points to this static site. It must be your separate API URL (e.g. https://your-backend.onrender.com). Update the env on Render and redeploy the static site."
+        );
+      }
+    } catch {
+      /* invalid URL */
+    }
+  }, []);
+  return text;
 }
 
 function getOrCreateSessionId() {
@@ -61,14 +97,19 @@ export default function App() {
       body: JSON.stringify(body),
     });
     if (!r.ok) {
-      let detail = r.statusText;
+      let detail = `${r.status} ${r.statusText}`;
       try {
         const j = await r.json();
-        if (j.detail) detail = typeof j.detail === "string" ? j.detail : JSON.stringify(j.detail);
+        if (j.detail != null) {
+          detail =
+            typeof j.detail === "string" ? j.detail : Array.isArray(j.detail) ? j.detail.map((x) => x.msg || JSON.stringify(x)).join("; ") : JSON.stringify(j.detail);
+        }
       } catch {
         /* ignore */
       }
-      throw new Error(detail);
+      const err = new Error(detail);
+      err.status = r.status;
+      throw err;
     }
     return r.json();
   }, []);
@@ -89,10 +130,21 @@ export default function App() {
       setIntent(data.intent || "greeting");
       setMessages((m) => [...m, { role: "assistant", text: data.reply || "" }]);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Request failed");
-      setMessages((m) => [
-        ...m,
-        { role: "assistant", text: "Something went wrong. Is the API running on port 8000?" },
+      const m = e instanceof Error ? e.message : "";
+      const status = e && typeof e === "object" && "status" in e ? e.status : undefined;
+      const is404 = m.includes("404") || m === "Not Found";
+      const is500 = status === 500 || m.startsWith("500 ");
+      setError(m || "Request failed");
+      setMessages((m_) => [
+        ...m_,
+        {
+          role: "assistant",
+          text: is404
+            ? "Could not reach the API (404). If you are on Render, VITE_API_BASE on the static site must be your API’s https://… URL (not this page’s URL). Rebuild the static site after changing it."
+            : is500
+              ? `Server error (500). Details: ${m.slice(0, 800)}${m.length > 800 ? "…" : ""}`
+              : "Something went wrong. In local dev, ensure the API is on port 8000. On Render, set GEMINI_API_KEY only on the API service and check the API logs.",
+        },
       ]);
     } finally {
       setSending(false);
@@ -119,6 +171,7 @@ export default function App() {
 
   const health = useApiHealth();
   const intentDisplay = useMemo(() => intentBadge(intent), [intent]);
+  const deployWarning = useDeploymentConfigWarning();
 
   return (
     <div className="app">
@@ -131,8 +184,15 @@ export default function App() {
           </div>
         </div>
         <div className="header-right">
-          <span className={`health ${health?.ok ? "ok" : "down"}`} title="GET /health">
-            {health?.ok ? "API online" : "API …"}
+          <span
+            className={`health ${health?.ok && health?.keyOk !== false ? "ok" : health?.ok && health?.keyOk === false ? "warn" : "down"}`}
+            title="GET /health"
+          >
+            {!health?.ok
+              ? "API …"
+              : health?.keyOk === false
+                ? "No Gemini key on API"
+                : "API online"}
           </span>
           <span className="intent-badge" title="Last classified intent">
             {intentDisplay}
@@ -151,6 +211,16 @@ export default function App() {
           Intent
         </button>
       </nav>
+
+      {deployWarning && <div className="banner config">{deployWarning}</div>}
+
+      {health?.ok && health?.keyOk === false && (
+        <div className="banner config">
+          The API is reachable but <strong>GEMINI_API_KEY</strong> (or <strong>GOOGLE_API_KEY</strong>) is not set on the
+          <strong> API web service</strong> in Render. Add it in Environment, save, and redeploy the API. Do not put the key on the static
+          site.
+        </div>
+      )}
 
       {error && <div className="banner error">{error}</div>}
 
@@ -260,11 +330,19 @@ function useApiHealth() {
     let cancelled = false;
     const check = () => {
       fetch(apiUrl("/health"))
-        .then((r) => {
-          if (!cancelled) setHealth({ ok: r.ok });
+        .then(async (r) => {
+          if (cancelled) return;
+          let keyOk = true;
+          try {
+            const j = await r.json();
+            if (j && typeof j.gemini_key_configured === "boolean") keyOk = j.gemini_key_configured;
+          } catch {
+            /* old API without field */
+          }
+          setHealth({ ok: r.ok, keyOk });
         })
         .catch(() => {
-          if (!cancelled) setHealth({ ok: false });
+          if (!cancelled) setHealth({ ok: false, keyOk: undefined });
         });
     };
     check();

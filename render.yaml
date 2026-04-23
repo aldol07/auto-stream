@@ -13,7 +13,7 @@ services:
     # Repo root must include the `backend/` package. Leave "Root Directory" empty in Render.
     rootDir: .
     buildCommand: pip install -r backend/requirements.txt
-    # Avoids ModuleNotFoundError: No module named 'backend' when cwd/PYTHONPATH differ
+    # Must invoke with `python` — not `render_entry.py` alone (Render would run it as a shell command).
     startCommand: python backend/render_entry.py
     healthCheckPath: /health
     envVars:

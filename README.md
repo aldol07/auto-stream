@@ -109,7 +109,16 @@ The repo includes a [`render.yaml`](render.yaml) [Blueprint](https://docs.render
 | `autostream-api` | Web (Python) | `python backend/render_entry.py` (listens on `$PORT`) |
 | `autostream-web` | Static        | Vite build output in `frontend/dist` |
 
-**Important — Root Directory (API web service):** In the service settings, **Root Directory** must be the **repository root** (empty / `.` / leave blank), **not** `backend/`. If it is set to `backend/`, you get `ModuleNotFoundError: No module named 'backend'`. The start command `python backend/render_entry.py` must run from the folder that *contains* the `backend` package. If you already set root to `backend/`, use start command: `python render_entry.py` instead and keep `rootDir` in sync, or clear Root Directory to the repo root.
+**Important — Start command (API):** You must run the file with **Python**, exactly one of:
+
+| Root Directory in Render | Start Command |
+|--------------------------|---------------|
+| Empty (repo root, recommended) | `python backend/render_entry.py` |
+| `backend` | `python render_entry.py` |
+
+**Wrong:** `render_entry.py` by itself — Render will try to execute it like a shell binary and you get `command not found` (exit 127). **Right:** always prefix with `python` (or `python3`).
+
+**Important — Root Directory (API web service):** **Root Directory** should be the **repository root** (empty / `.` / leave blank), **not** `backend/`, unless you intentionally use the second row in the table above. If root is `backend/` by mistake, you get `ModuleNotFoundError: No module named 'backend'`. If you use repo root, the start command `python backend/render_entry.py` runs from the folder that *contains* the `backend` package.
 
 **Which env var goes where**
 
@@ -141,6 +150,13 @@ Do **not** put `CORS_ORIGINS` on the static service or `VITE_API_BASE` on the AP
    - Trigger a **new deploy** for the static site so the bundle picks up `VITE_API_BASE`.
 
 6. **Cold starts (free tier)** The API may sleep when idle; the first request after sleep can be slow. For heavier RAG/embedding, consider a paid instance with more RAM.
+
+**If you see 500 or `API_KEY_INVALID` from Gemini**
+
+- Confirm **`GEMINI_API_KEY`** (or `GOOGLE_API_KEY`) is on the **API web service** only, then **Save** and **Manual Deploy** that service. Open your API’s `/health` in a browser; the JSON should show `"gemini_key_configured": true`.
+- **No** leading/trailing spaces in the value (we strip in code, but check in Render).
+- In [Google AI Studio](https://aistudio.google.com/apikey), create a new key, ensure **Generative Language API** is allowed for the project, and avoid restrictions that block **server-side** use (e.g. wrong referrers) until it works.
+- In the browser, the chat bubble now includes the first part of the server error when the API returns 500—use that plus **API → Logs** on Render to debug.
 
 ### Manual alternative (no Blueprint)
 

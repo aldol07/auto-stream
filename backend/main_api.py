@@ -22,7 +22,8 @@ from .agent import build_graph, get_initial_state
 
 BACKEND = Path(__file__).resolve().parent
 ROOT = BACKEND.parent
-load_dotenv(ROOT / ".env")
+# Do not override env vars already set by the host (e.g. Render, Docker)
+load_dotenv(ROOT / ".env", override=False)
 
 LEADS_LOG_PATH = BACKEND / "leads_log.json"
 
@@ -105,13 +106,23 @@ class ResetRequest(BaseModel):
 class HealthResponse(BaseModel):
     status: str
     model: str = "gemini-2.5-flash"
+    gemini_key_configured: bool = False
+
+
+def _gemini_key_present() -> bool:
+    g = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or ""
+    return bool(g.strip())
 
 
 # ─── Routes ─────────────────────────────────────────
 
 @app.get("/health", response_model=HealthResponse)
 def health():
-    return HealthResponse(status="ok")
+    ok = _gemini_key_present()
+    return HealthResponse(
+        status="ok" if ok else "degraded",
+        gemini_key_configured=ok,
+    )
 
 
 @app.post("/chat", response_model=ChatResponse)
@@ -129,7 +140,10 @@ def chat(req: ChatRequest):
     try:
         result = get_graph().invoke(state)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+        msg = str(e)
+        if len(msg) > 2000:
+            msg = msg[:2000] + "…"
+        raise HTTPException(status_code=500, detail=msg) from e
 
     _sessions[session_id] = result
     messages = result.get("messages", [])

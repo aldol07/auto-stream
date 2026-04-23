@@ -94,6 +94,11 @@ body {
   border-color: rgba(245, 101, 101, 0.35);
 }
 
+.health.warn {
+  color: #fbbf24;
+  border-color: rgba(251, 191, 36, 0.4);
+}
+
 .intent-badge {
   font-size: 0.8rem;
   padding: 0.35rem 0.65rem;
@@ -136,6 +141,17 @@ body {
   padding: 0.5rem 0.75rem;
   border-radius: 8px;
   font-size: 0.9rem;
+  margin-bottom: 0.75rem;
+}
+
+.banner.config {
+  background: rgba(234, 179, 8, 0.12);
+  border: 1px solid rgba(234, 179, 8, 0.35);
+  color: #fde68a;
+  padding: 0.55rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  line-height: 1.4;
   margin-bottom: 0.75rem;
 }
 

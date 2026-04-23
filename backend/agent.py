@@ -35,10 +35,11 @@ class AgentState(TypedDict):
 # ─────────────────────────────────────────────
 
 def get_llm():
-    api_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+    raw = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY")
+    api_key = raw.strip() if raw else ""
     if not api_key:
         raise ValueError(
-            "No API key found. Set GEMINI_API_KEY or GOOGLE_API_KEY in your .env file."
+            "No API key found. Set GEMINI_API_KEY or GOOGLE_API_KEY (e.g. on your API host’s environment, not the static site)."
         )
     return ChatGoogleGenerativeAI(
         model="gemini-2.5-flash",
